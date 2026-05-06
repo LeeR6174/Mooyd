@@ -2,10 +2,10 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { actions } from './data/actions';
 import { 
   Sparkles, RefreshCw, CheckCircle2, Zap, Smile, Settings, 
-  Plus, Trash2, ArrowLeft, X, Edit3, Clock, ChevronRight 
+  Plus, Trash2, ArrowLeft, X, Edit3, Clock, ChevronRight, LayoutGrid, Heart
 } from 'lucide-react';
 
-const moods = [
+const defaultMoods = [
   { id: '集中', label: '集中', icon: '🎯' },
   { id: 'リラックス', label: 'リラックス', icon: '🌿' },
   { id: '運動', label: '運動', icon: '🏃' },
@@ -20,14 +20,21 @@ function App() {
   const [recommendation, setRecommendation] = useState(null);
   const [isRerolling, setIsRerolling] = useState(false);
   const [editingAction, setEditingAction] = useState(null);
+  const [editingMood, setEditingMood] = useState(null);
   const [isMuted, setIsMuted] = useState(() => {
     return localStorage.getItem('mooyd_muted') === 'true';
   });
   
-  // Unified actions state (Initial + Custom)
+  // Unified actions state
   const [userActions, setUserActions] = useState(() => {
     const saved = localStorage.getItem('mooyd_user_actions');
-    return saved ? JSON.parse(saved) : actions; // Use default actions if empty
+    return saved ? JSON.parse(saved) : actions;
+  });
+
+  // Unified moods state
+  const [userMoods, setUserMoods] = useState(() => {
+    const saved = localStorage.getItem('mooyd_user_moods');
+    return saved ? JSON.parse(saved) : defaultMoods;
   });
 
   // History state
@@ -36,17 +43,19 @@ function App() {
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Persist all actions
+  // Persist all data
   useEffect(() => {
     localStorage.setItem('mooyd_user_actions', JSON.stringify(userActions));
   }, [userActions]);
 
-  // Persist history
+  useEffect(() => {
+    localStorage.setItem('mooyd_user_moods', JSON.stringify(userMoods));
+  }, [userMoods]);
+
   useEffect(() => {
     localStorage.setItem('mooyd_history', JSON.stringify(history));
   }, [history]);
 
-  // Persist muted state
   useEffect(() => {
     localStorage.setItem('mooyd_muted', isMuted);
   }, [isMuted]);
@@ -56,38 +65,36 @@ function App() {
   // Sound Effect Helper
   const playSound = (type) => {
     if (isMuted) return;
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    
-    osc.type = 'sine';
-    if (type === 'success') {
-      osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
-      osc.frequency.exponentialRampToValueAtTime(1046.50, ctx.currentTime + 0.1); // C6
-      gain.gain.setValueAtTime(0.1, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-    } else if (type === 'click') {
-      osc.frequency.setValueAtTime(800, ctx.currentTime);
-      gain.gain.setValueAtTime(0.05, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
-    }
-    
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.3);
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      osc.type = 'sine';
+      if (type === 'success') {
+        osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1046.50, ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+      } else if (type === 'click') {
+        osc.frequency.setValueAtTime(800, ctx.currentTime);
+        gain.gain.setValueAtTime(0.05, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+      }
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.3);
+    } catch (e) { console.error(e); }
   };
 
   const handleSync = () => {
     playSound('click');
-    // Energy-based filtering: 
-    // Logic: If action has energy range [min, max], check if current energy is within it.
-    // Standard heuristic: high energy (>70) allows anything, low energy (<30) restricts high-effort actions.
     const filtered = allActions.filter(a => {
       const moodMatch = a.mood.includes(selectedMood);
       const energyRange = a.energy || [0, 100];
-      const energyMatch = energy >= energyRange[0] && energy <= energyRange[1];
-      return moodMatch && energyMatch;
+      return moodMatch && energy >= energyRange[0] && energy <= energyRange[1];
     });
 
     const pool = filtered.length > 0 ? filtered : allActions.filter(a => a.mood.includes(selectedMood));
@@ -104,8 +111,7 @@ function App() {
       const filtered = allActions.filter(a => {
         const moodMatch = a.mood.includes(selectedMood);
         const energyRange = a.energy || [0, 100];
-        const energyMatch = energy >= energyRange[0] && energy <= energyRange[1];
-        return moodMatch && energyMatch && a.id !== recommendation?.id;
+        return moodMatch && energy >= energyRange[0] && energy <= energyRange[1] && a.id !== recommendation?.id;
       });
       const pool = filtered.length > 0 ? filtered : allActions.filter(a => a.mood.includes(selectedMood) && a.id !== recommendation?.id);
       const random = pool[Math.floor(Math.random() * pool.length)];
@@ -124,7 +130,7 @@ function App() {
       energy: energy,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
-    setHistory([newEntry, ...history].slice(0, 5)); // Keep last 5
+    setHistory([newEntry, ...history].slice(0, 5));
     setView('dashboard');
   };
 
@@ -140,7 +146,6 @@ function App() {
         {view === 'dashboard' ? (
           <div className="space-y-6">
             <div className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] p-8 sm:p-10 shadow-2xl shadow-slate-200/60 border border-white/50 animate-in fade-in zoom-in-95 duration-700">
-              {/* Header */}
               <div className="flex items-center justify-between mb-12">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-gradient-to-br from-cyan-400 to-cyan-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-cyan-200">
@@ -159,7 +164,6 @@ function App() {
                 </button>
               </div>
 
-              {/* Energy Input */}
               <div className="mb-12 group">
                 <div className="flex justify-between items-end mb-6">
                   <div className="flex items-center gap-2">
@@ -174,31 +178,23 @@ function App() {
                 </div>
                 <div className="relative h-8 flex items-center">
                   <input 
-                    type="range" 
-                    min="0" 
-                    max="100" 
-                    value={energy} 
+                    type="range" min="0" max="100" value={energy} 
                     onChange={(e) => setEnergy(parseInt(e.target.value))}
                     className="w-full relative z-10"
                   />
                   <div className="absolute inset-x-0 h-2 bg-slate-100 rounded-full"></div>
-                  <div 
-                    className="absolute left-0 h-2 bg-gradient-to-r from-cyan-300 to-cyan-500 rounded-full transition-all duration-300"
-                    style={{ width: `${energy}%` }}
-                  ></div>
+                  <div className="absolute left-0 h-2 bg-gradient-to-r from-cyan-300 to-cyan-500 rounded-full transition-all duration-300" style={{ width: `${energy}%` }}></div>
                 </div>
               </div>
 
-              {/* Mood Grid */}
               <div className="mb-12">
                 <label className="block text-sm font-bold text-slate-400 uppercase tracking-widest mb-6 px-1">Current Mood</label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {moods.map((mood) => (
+                  {userMoods.map((mood) => (
                     <button
                       key={mood.id}
                       onClick={() => { playSound('click'); setSelectedMood(mood.id); }}
-                      className={`
-                        relative overflow-hidden py-4 px-4 rounded-3xl text-sm font-semibold transition-all duration-300 border-2
+                      className={`relative overflow-hidden py-4 px-4 rounded-3xl text-sm font-semibold transition-all duration-300 border-2
                         ${selectedMood === mood.id 
                           ? 'bg-cyan-500 border-cyan-500 text-white shadow-xl shadow-cyan-200 -translate-y-1' 
                           : 'bg-white border-slate-100 text-slate-500 hover:border-cyan-200 hover:bg-slate-50 active:scale-95'}
@@ -208,27 +204,17 @@ function App() {
                         <span className="text-2xl">{mood.icon}</span>
                         <span>{mood.label}</span>
                       </div>
-                      {selectedMood === mood.id && (
-                        <div className="absolute top-0 right-0 p-1">
-                          <CheckCircle2 size={14} className="text-white/80" />
-                        </div>
-                      )}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Sync Button */}
-              <button
-                onClick={handleSync}
-                className="w-full bg-slate-900 text-white rounded-[2rem] py-5 px-6 font-bold text-lg flex items-center justify-center gap-3 shadow-2xl shadow-slate-300 hover:bg-cyan-600 hover:shadow-cyan-200 hover:-translate-y-1 active:scale-[0.98] transition-all duration-500 group"
-              >
+              <button onClick={handleSync} className="w-full bg-slate-900 text-white rounded-[2rem] py-5 px-6 font-bold text-lg flex items-center justify-center gap-3 shadow-2xl shadow-slate-300 hover:bg-cyan-600 transition-all duration-500 group">
                 <Sparkles size={22} className="group-hover:rotate-12 transition-transform" />
                 今を同期する
               </button>
             </div>
 
-            {/* History Section */}
             {history.length > 0 && (
               <div className="bg-white/40 backdrop-blur-lg rounded-[2rem] p-6 border border-white/50 animate-in slide-in-from-bottom-4 duration-1000">
                 <div className="flex items-center gap-2 mb-4 px-2">
@@ -237,11 +223,9 @@ function App() {
                 </div>
                 <div className="space-y-2">
                   {history.map((item) => (
-                <div className="flex items-center justify-between p-4 bg-white/60 rounded-3xl border border-white/50 group hover:bg-white/90 transition-all duration-500 shadow-sm hover:shadow-md hover:-translate-y-0.5">
+                    <div key={item.id} className="flex items-center justify-between p-4 bg-white/60 rounded-3xl border border-white/50 group hover:bg-white/90 transition-all duration-500 shadow-sm hover:shadow-md hover:-translate-y-0.5">
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-cyan-50 rounded-2xl flex items-center justify-center text-cyan-600 text-xs font-bold shadow-inner">
-                          {item.energy}%
-                        </div>
+                        <div className="w-10 h-10 bg-cyan-50 rounded-2xl flex items-center justify-center text-cyan-600 text-xs font-bold shadow-inner">{item.energy}%</div>
                         <div>
                           <p className="text-sm font-bold text-slate-700">{item.name}</p>
                           <div className="flex items-center gap-2 mt-0.5">
@@ -250,9 +234,6 @@ function App() {
                             <span className="text-[10px] text-cyan-500 font-bold uppercase tracking-widest">{item.mood}</span>
                           </div>
                         </div>
-                      </div>
-                      <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-cyan-50 group-hover:text-cyan-400 transition-colors">
-                        <CheckCircle2 size={14} />
                       </div>
                     </div>
                   ))}
@@ -266,124 +247,102 @@ function App() {
               <div className="w-20 h-20 bg-gradient-to-br from-cyan-50 to-cyan-100 rounded-[2.5rem] flex items-center justify-center text-cyan-600 mx-auto mb-10 shadow-inner">
                 <Zap size={40} fill="currentColor" className="opacity-80" />
               </div>
-              
-              <div className="mb-12">
-                <p className="text-xs font-bold text-cyan-500 uppercase tracking-[0.3em] mb-4">Perfect Action for You</p>
-                <h2 className="text-4xl font-bold text-slate-800 leading-tight">
-                  {recommendation?.name}
-                </h2>
-              </div>
-
+              <h2 className="text-4xl font-bold text-slate-800 leading-tight mb-12">{recommendation?.name}</h2>
               <div className="flex flex-col gap-4">
-                <button
-                  onClick={handleDone}
-                  className="w-full bg-slate-900 text-white rounded-3xl py-5 px-8 font-bold text-lg flex items-center justify-center gap-3 hover:bg-cyan-600 shadow-xl shadow-slate-200 transition-all duration-300 active:scale-95 group"
-                >
-                  <CheckCircle2 size={24} className="group-hover:scale-110 transition-transform" />
-                  完了する
+                <button onClick={handleDone} className="w-full bg-slate-900 text-white rounded-3xl py-5 px-8 font-bold text-lg flex items-center justify-center gap-3 hover:bg-cyan-600 transition-all duration-300">
+                  <CheckCircle2 size={24} /> 完了する
                 </button>
-                
-                <button
-                  onClick={handleReroll}
-                  disabled={isRerolling}
-                  className="w-full bg-transparent text-slate-400 rounded-3xl py-4 px-8 font-semibold hover:bg-slate-50 hover:text-slate-600 transition-all duration-300 flex items-center justify-center gap-2 group disabled:opacity-50"
-                >
-                  <RefreshCw size={20} className={`${isRerolling ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}`} />
-                  他の提案を見る
+                <button onClick={handleReroll} disabled={isRerolling} className="w-full bg-transparent text-slate-400 rounded-3xl py-4 px-8 font-semibold hover:bg-slate-50 transition-all flex items-center justify-center gap-2 group">
+                  <RefreshCw size={20} className={`${isRerolling ? 'animate-spin' : 'group-hover:rotate-180 transition-transform'}`} /> 他の提案を見る
                 </button>
               </div>
-            </div>
-            
-            <div className="mt-10 flex items-center gap-2 px-6 py-2 bg-white rounded-full shadow-sm border border-slate-100 animate-bounce">
-              <span className="text-[10px] text-cyan-500 font-bold uppercase tracking-widest">New</span>
-              <p className="text-slate-400 text-[11px] font-medium tracking-wide">
-                今の気分に合わせて最適化されました
-              </p>
             </div>
           </div>
         ) : (
           <div className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] p-8 sm:p-10 shadow-2xl shadow-slate-200/60 border border-white/50 animate-in fade-in slide-in-from-bottom-6 duration-700">
             <div className="flex items-center justify-between mb-10">
-              <button 
-                onClick={() => { playSound('click'); setView('dashboard'); setEditingAction(null); }}
-                className="p-3 bg-white rounded-2xl text-slate-400 hover:text-slate-600 transition-all border border-slate-100 shadow-sm"
-              >
-                <ArrowLeft size={20} />
-              </button>
-              <h2 className="text-xl font-bold text-slate-800 tracking-tight">{editingAction ? 'Edit Action' : 'Manage Actions'}</h2>
-              <button 
-                onClick={() => { playSound('click'); setIsMuted(!isMuted); }}
-                className={`p-3 rounded-2xl transition-all border shadow-sm ${isMuted ? 'bg-red-50 text-red-400 border-red-100' : 'bg-white text-slate-400 border-slate-100'}`}
-              >
-                {isMuted ? <X size={20} /> : <Smile size={20} />}
-              </button>
+              <button onClick={() => { playSound('click'); setView('dashboard'); setEditingAction(null); setEditingMood(null); }} className="p-3 bg-white rounded-2xl text-slate-400 border border-slate-100 shadow-sm"><ArrowLeft size={20} /></button>
+              <h2 className="text-xl font-bold text-slate-800 tracking-tight">Settings</h2>
+              <button onClick={() => { playSound('click'); setIsMuted(!isMuted); }} className={`p-3 rounded-2xl border shadow-sm ${isMuted ? 'bg-red-50 text-red-400 border-red-100' : 'bg-white text-slate-400 border-slate-100'}`}>{isMuted ? <X size={20} /> : <Smile size={20} />}</button>
             </div>
 
-            {/* Add/Edit Action Form */}
-            <div className="relative">
-              <AddActionForm 
-                initialData={editingAction}
-                onAdd={(newAction) => { playSound('success'); setUserActions([newAction, ...userActions]); }}
-                onUpdate={(updatedAction) => {
-                  playSound('success');
-                  setUserActions(userActions.map(a => a.id === updatedAction.id ? updatedAction : a));
-                  setEditingAction(null);
-                }}
-                onCancel={() => { playSound('click'); setEditingAction(null); }}
-              />
-            </div>
-
-            {/* Actions List */}
-            {!editingAction && (
-              <div className="mt-12">
+            <div className="space-y-12">
+              {/* Mood Management */}
+              <section>
                 <div className="flex items-center justify-between mb-6 px-1">
                   <div className="flex items-center gap-2">
                     <div className="w-1 h-4 bg-cyan-500 rounded-full"></div>
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Action List</h3>
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Manage Moods</h3>
                   </div>
-                  <button 
-                    onClick={() => { if(confirm('初期状態に戻しますか？')) setUserActions(actions); }}
-                    className="px-3 py-1 bg-slate-50 rounded-lg text-[10px] text-slate-400 hover:text-red-400 hover:bg-red-50 font-bold uppercase transition-all"
-                  >
-                    Reset
-                  </button>
                 </div>
-                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                  {userActions.length === 0 ? (
-                    <div className="text-center py-10 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
-                      <p className="text-slate-400 text-sm">アクションがありません</p>
-                    </div>
-                  ) : (
-                    userActions.map((action) => (
-                      <div key={action.id} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm group hover:border-cyan-200 transition-all">
-                        <div>
-                          <p className="font-semibold text-slate-700">{action.name}</p>
-                          <div className="flex gap-1 mt-1">
-                            {action.mood.map(m => (
-                              <span key={m} className="text-[10px] bg-cyan-50 text-cyan-600 px-2 py-0.5 rounded-full font-bold">{m}</span>
-                            ))}
-                          </div>
-                        </div>
+                <AddMoodForm 
+                  initialData={editingMood}
+                  onAdd={(newMood) => setUserMoods([...userMoods, newMood])}
+                  onUpdate={(updatedMood) => {
+                    setUserMoods(userMoods.map(m => m.id === updatedMood.id ? updatedMood : m));
+                    setEditingMood(null);
+                  }}
+                  onCancel={() => setEditingMood(null)}
+                />
+                {!editingMood && (
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    {userMoods.map(mood => (
+                      <div key={mood.id} className="flex items-center gap-2 bg-white border border-slate-100 px-3 py-2 rounded-2xl shadow-sm group">
+                        <span className="text-lg">{mood.icon}</span>
+                        <span className="text-xs font-bold text-slate-700">{mood.label}</span>
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button 
-                            onClick={() => { playSound('click'); setEditingAction(action); }}
-                            className="p-2 text-slate-300 hover:text-cyan-500 hover:bg-cyan-50 rounded-lg transition-all"
-                          >
-                            <Edit3 size={18} />
-                          </button>
-                          <button 
-                            onClick={() => { playSound('click'); setUserActions(userActions.filter(a => a.id !== action.id)); }}
-                            className="p-2 text-slate-300 hover:text-red-400 hover:bg-red-50 rounded-lg transition-all"
-                          >
-                            <Trash2 size={18} />
-                          </button>
+                          <button onClick={() => setEditingMood(mood)} className="text-slate-300 hover:text-cyan-500"><Edit3 size={12} /></button>
+                          <button onClick={() => setUserMoods(userMoods.filter(m => m.id !== mood.id))} className="text-slate-300 hover:text-red-400"><Trash2 size={12} /></button>
                         </div>
                       </div>
-                    ))
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              {/* Action Management */}
+              {!editingMood && (
+                <section>
+                  <div className="flex items-center justify-between mb-6 px-1">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1 h-4 bg-cyan-500 rounded-full"></div>
+                      <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Manage Actions</h3>
+                    </div>
+                    <button onClick={() => { if(confirm('全てリセットしますか？')) { setUserActions(actions); setUserMoods(defaultMoods); } }} className="px-3 py-1 bg-slate-50 rounded-lg text-[10px] text-slate-400 font-bold uppercase">Reset All</button>
+                  </div>
+                  <AddActionForm 
+                    moods={userMoods}
+                    initialData={editingAction}
+                    onAdd={(newAction) => setUserActions([newAction, ...userActions])}
+                    onUpdate={(updatedAction) => {
+                      setUserActions(userActions.map(a => a.id === updatedAction.id ? updatedAction : a));
+                      setEditingAction(null);
+                    }}
+                    onCancel={() => setEditingAction(null)}
+                  />
+                  {!editingAction && (
+                    <div className="space-y-3 mt-6 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
+                      {userActions.map(action => (
+                        <div key={action.id} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 group hover:border-cyan-200 transition-all">
+                          <div>
+                            <p className="font-semibold text-slate-700 text-sm">{action.name}</p>
+                            <div className="flex gap-1 mt-1">
+                              {action.mood.map(m => (
+                                <span key={m} className="text-[9px] bg-cyan-50 text-cyan-600 px-2 py-0.5 rounded-full font-bold">{m}</span>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => setEditingAction(action)} className="p-2 text-slate-300 hover:text-cyan-500"><Edit3 size={16} /></button>
+                            <button onClick={() => setUserActions(userActions.filter(a => a.id !== action.id))} className="p-2 text-slate-300 hover:text-red-400"><Trash2 size={16} /></button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   )}
-                </div>
-              </div>
-            )}
+                </section>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -391,134 +350,71 @@ function App() {
   );
 }
 
-function AddActionForm({ onAdd, onUpdate, initialData, onCancel }) {
+function AddMoodForm({ onAdd, onUpdate, initialData, onCancel }) {
+  const [label, setLabel] = useState('');
+  const [icon, setIcon] = useState('✨');
+
+  useEffect(() => {
+    if (initialData) { setLabel(initialData.label); setIcon(initialData.icon); }
+    else { setLabel(''); setIcon('✨'); }
+  }, [initialData]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!label) return;
+    if (initialData) onUpdate({ ...initialData, label, icon });
+    else onAdd({ id: label, label, icon });
+    setLabel(''); setIcon('✨');
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="flex gap-2">
+      <input type="text" value={icon} onChange={e => setIcon(e.target.value)} className="w-12 bg-white border border-slate-100 rounded-xl p-2 text-center" placeholder="Icon" />
+      <input type="text" value={label} onChange={e => setLabel(e.target.value)} className="flex-1 bg-white border border-slate-100 rounded-xl px-4 text-sm" placeholder="Mood Name (e.g. Focus)" />
+      <button type="submit" className="bg-cyan-500 text-white p-2 rounded-xl"><Plus size={20} /></button>
+      {initialData && <button type="button" onClick={onCancel} className="bg-slate-100 text-slate-400 p-2 rounded-xl"><X size={20} /></button>}
+    </form>
+  );
+}
+
+function AddActionForm({ onAdd, onUpdate, initialData, onCancel, moods }) {
   const [name, setName] = useState('');
   const [selectedMoods, setSelectedMoods] = useState([]);
   const [energyRange, setEnergyRange] = useState([0, 100]);
 
   useEffect(() => {
-    if (initialData) {
-      setName(initialData.name);
-      setSelectedMoods(initialData.mood);
-      setEnergyRange(initialData.energy || [0, 100]);
-    } else {
-      setName('');
-      setSelectedMoods([]);
-      setEnergyRange([0, 100]);
-    }
+    if (initialData) { setName(initialData.name); setSelectedMoods(initialData.mood); setEnergyRange(initialData.energy || [0, 100]); }
+    else { setName(''); setSelectedMoods([]); setEnergyRange([0, 100]); }
   }, [initialData]);
 
   const toggleMood = (mood) => {
-    if (selectedMoods.includes(mood)) {
-      setSelectedMoods(selectedMoods.filter(m => m !== mood));
-    } else {
-      setSelectedMoods([...selectedMoods, mood]);
-    }
+    if (selectedMoods.includes(mood)) setSelectedMoods(selectedMoods.filter(m => m !== mood));
+    else setSelectedMoods([...selectedMoods, mood]);
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!name || selectedMoods.length === 0) return;
-    
-    if (initialData) {
-      onUpdate({
-        ...initialData,
-        name,
-        mood: selectedMoods,
-        energy: energyRange,
-      });
-    } else {
-      onAdd({
-        id: Date.now(),
-        name,
-        mood: selectedMoods,
-        energy: energyRange,
-      });
-    }
-    
-    setName('');
-    setSelectedMoods([]);
-    setEnergyRange([0, 100]);
+    const data = { id: initialData?.id || Date.now(), name, mood: selectedMoods, energy: energyRange };
+    if (initialData) onUpdate(data); else onAdd(data);
+    setName(''); setSelectedMoods([]); setEnergyRange([0, 100]);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-slate-50/50 p-6 rounded-[2rem] border border-slate-100 shadow-inner">
-      <div className="mb-6">
-        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">アクション名</label>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="例: スクワット10回"
-          className="w-full bg-white border border-slate-100 rounded-2xl py-3 px-4 text-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 transition-all shadow-sm"
-        />
+    <form onSubmit={handleSubmit} className="bg-slate-50/50 p-6 rounded-[2rem] border border-slate-100">
+      <div className="mb-4">
+        <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Action Name" className="w-full bg-white border border-slate-100 rounded-xl py-2 px-4 text-sm" />
       </div>
-
-      <div className="mb-6">
-        <div className="flex justify-between items-center mb-3 px-1">
-          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">推奨エネルギー範囲</label>
-          <span className="text-[10px] font-bold text-cyan-600">{energyRange[0]}% - {energyRange[1]}%</span>
-        </div>
-        <div className="flex gap-4">
-          <div className="flex-1">
-            <p className="text-[9px] text-slate-400 mb-1 text-center">Min</p>
-            <input 
-              type="range" min="0" max="100" value={energyRange[0]} 
-              onChange={(e) => setEnergyRange([Math.min(parseInt(e.target.value), energyRange[1]), energyRange[1]])}
-              className="w-full h-1"
-            />
-          </div>
-          <div className="flex-1">
-            <p className="text-[9px] text-slate-400 mb-1 text-center">Max</p>
-            <input 
-              type="range" min="0" max="100" value={energyRange[1]} 
-              onChange={(e) => setEnergyRange([energyRange[0], Math.max(parseInt(e.target.value), energyRange[0])])}
-              className="w-full h-1"
-            />
-          </div>
-        </div>
+      <div className="mb-4">
+        <div className="flex justify-between text-[10px] font-bold text-slate-400 mb-2"><span>Energy Range</span><span>{energyRange[0]}%-{energyRange[1]}%</span></div>
+        <div className="flex gap-2"><input type="range" min="0" max="100" value={energyRange[0]} onChange={e => setEnergyRange([Math.min(parseInt(e.target.value), energyRange[1]), energyRange[1]])} className="flex-1" /><input type="range" min="0" max="100" value={energyRange[1]} onChange={e => setEnergyRange([energyRange[0], Math.max(parseInt(e.target.value), energyRange[0])])} className="flex-1" /></div>
       </div>
-
-      <div className="mb-8">
-        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-1">対応する気分（複数選択可）</label>
-        <div className="flex flex-wrap gap-2">
-          {moods.map((mood) => (
-            <button
-              key={mood.id}
-              type="button"
-              onClick={() => toggleMood(mood.id)}
-              className={`
-                px-3 py-1.5 rounded-full text-[11px] font-bold transition-all border
-                ${selectedMoods.includes(mood.id) 
-                  ? 'bg-cyan-500 border-cyan-500 text-white shadow-md' 
-                  : 'bg-white border-slate-100 text-slate-400 hover:border-slate-300'}
-              `}
-            >
-              {mood.label}
-            </button>
-          ))}
-        </div>
+      <div className="flex flex-wrap gap-1 mb-6">
+        {moods.map(mood => (
+          <button key={mood.id} type="button" onClick={() => toggleMood(mood.id)} className={`px-2 py-1 rounded-lg text-[10px] font-bold border ${selectedMoods.includes(mood.id) ? 'bg-cyan-500 border-cyan-500 text-white' : 'bg-white border-slate-100 text-slate-400'}`}>{mood.label}</button>
+        ))}
       </div>
-
-      <div className="flex gap-3">
-        {initialData && (
-          <button
-            type="button"
-            onClick={onCancel}
-            className="flex-1 bg-white border border-slate-100 text-slate-400 rounded-2xl py-3 font-bold text-sm hover:bg-slate-50 transition-all"
-          >
-            キャンセル
-          </button>
-        )}
-        <button
-          type="submit"
-          disabled={!name || selectedMoods.length === 0}
-          className={`flex-[2] bg-cyan-500 text-white rounded-2xl py-3 font-bold text-sm flex items-center justify-center gap-2 hover:bg-cyan-400 disabled:opacity-50 disabled:hover:bg-cyan-500 transition-all shadow-lg shadow-cyan-100`}
-        >
-          {initialData ? <CheckCircle2 size={18} /> : <Plus size={18} />}
-          {initialData ? '保存する' : '追加する'}
-        </button>
-      </div>
+      <button type="submit" className="w-full bg-cyan-500 text-white py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-2"><Plus size={16} /> {initialData ? 'Update' : 'Add'}</button>
     </form>
   );
 }
