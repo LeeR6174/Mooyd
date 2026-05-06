@@ -141,12 +141,12 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-slate-50">
-      <div className="w-full max-w-lg">
+    <div className="min-h-screen flex items-start sm:items-center justify-center p-4 sm:p-6 bg-slate-50">
+      <div className="w-full max-w-[440px] pt-4 sm:pt-0">
         {view === 'dashboard' ? (
           <div className="space-y-6">
-            <div className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] p-8 sm:p-10 shadow-2xl shadow-slate-200/60 border border-white/50 animate-in fade-in zoom-in-95 duration-700">
-              <div className="flex items-center justify-between mb-12">
+            <div className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] p-7 sm:p-9 shadow-2xl shadow-slate-200/60 border border-white/50 animate-in fade-in zoom-in-95 duration-700">
+              <div className="flex items-center justify-between mb-10">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-gradient-to-br from-cyan-400 to-cyan-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-cyan-200">
                     <Smile size={28} />
@@ -187,22 +187,22 @@ function App() {
                 </div>
               </div>
 
-              <div className="mb-12">
+              <div className="mb-10">
                 <label className="block text-sm font-bold text-slate-400 uppercase tracking-widest mb-6 px-1">Current Mood</label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   {userMoods.map((mood) => (
                     <button
                       key={mood.id}
                       onClick={() => { playSound('click'); setSelectedMood(mood.id); }}
-                      className={`relative overflow-hidden py-4 px-4 rounded-3xl text-sm font-semibold transition-all duration-300 border-2
+                      className={`relative overflow-hidden py-4 px-3 rounded-3xl text-sm font-semibold transition-all duration-300 border-2
                         ${selectedMood === mood.id 
                           ? 'bg-cyan-500 border-cyan-500 text-white shadow-xl shadow-cyan-200 -translate-y-1' 
                           : 'bg-white border-slate-100 text-slate-500 hover:border-cyan-200 hover:bg-slate-50 active:scale-95'}
                       `}
                     >
-                      <div className="flex flex-col items-center gap-2 relative z-10">
+                      <div className="flex flex-col items-center gap-1.5 relative z-10">
                         <span className="text-2xl">{mood.icon}</span>
-                        <span>{mood.label}</span>
+                        <span className="truncate w-full px-1">{mood.label}</span>
                       </div>
                     </button>
                   ))}
@@ -243,11 +243,11 @@ function App() {
           </div>
         ) : view === 'result' ? (
           <div className={`flex flex-col items-center transition-all duration-500 ${isRerolling ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
-            <div className="bg-white rounded-[3rem] p-12 shadow-2xl shadow-slate-200 border border-slate-100 text-center w-full animate-in zoom-in-95 duration-500">
+            <div className="bg-white rounded-[3rem] p-10 sm:p-12 shadow-2xl shadow-slate-200 border border-slate-100 text-center w-full animate-in zoom-in-95 duration-500">
               <div className="w-20 h-20 bg-gradient-to-br from-cyan-50 to-cyan-100 rounded-[2.5rem] flex items-center justify-center text-cyan-600 mx-auto mb-10 shadow-inner">
                 <Zap size={40} fill="currentColor" className="opacity-80" />
               </div>
-              <h2 className="text-4xl font-bold text-slate-800 leading-tight mb-12">{recommendation?.name}</h2>
+              <h2 className="text-3xl sm:text-4xl font-bold text-slate-800 leading-tight mb-12">{recommendation?.name}</h2>
               <div className="flex flex-col gap-4">
                 <button onClick={handleDone} className="w-full bg-slate-900 text-white rounded-3xl py-5 px-8 font-bold text-lg flex items-center justify-center gap-3 hover:bg-cyan-600 transition-all duration-300">
                   <CheckCircle2 size={24} /> 完了する
@@ -259,7 +259,7 @@ function App() {
             </div>
           </div>
         ) : (
-          <div className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] p-8 sm:p-10 shadow-2xl shadow-slate-200/60 border border-white/50 animate-in fade-in slide-in-from-bottom-6 duration-700">
+          <div className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] p-7 sm:p-9 shadow-2xl shadow-slate-200/60 border border-white/50 animate-in fade-in slide-in-from-bottom-6 duration-700">
             <div className="flex items-center justify-between mb-10">
               <button onClick={() => { playSound('click'); setView('dashboard'); setEditingAction(null); setEditingMood(null); }} className="p-3 bg-white rounded-2xl text-slate-400 border border-slate-100 shadow-sm"><ArrowLeft size={20} /></button>
               <h2 className="text-xl font-bold text-slate-800 tracking-tight">Settings</h2>
