@@ -9,21 +9,34 @@ const defaultMoods = [
   { id: '集中', label: '集中', icon: '🎯' },
   { id: 'リラックス', label: 'リラックス', icon: '🌿' },
   { id: '運動', label: '運動', icon: '🏃' },
-  { id: 'ぼーっと', label: 'ぼーっと', icon: '☁️' },
   { id: 'クリエイティブ', label: 'クリエイティブ', icon: '🎨' },
 ];
 
 function App() {
   const [view, setView] = useState('dashboard'); // 'dashboard', 'result', 'settings'
-  const [energy, setEnergy] = useState(50);
   const [selectedMood, setSelectedMood] = useState('リラックス');
   const [recommendation, setRecommendation] = useState(null);
   const [isRerolling, setIsRerolling] = useState(false);
   const [editingAction, setEditingAction] = useState(null);
   const [editingMood, setEditingMood] = useState(null);
+  const [isTestMode, setIsTestMode] = useState(() => {
+    return localStorage.getItem('mooyd_test_mode') === 'true';
+  });
+  const [dailyRerolls, setDailyRerolls] = useState(() => {
+    const saved = localStorage.getItem('mooyd_daily_rerolls');
+    const today = new Date().toLocaleDateString();
+    const data = saved ? JSON.parse(saved) : {};
+    return data[today] || 0;
+  });
   const [isMuted, setIsMuted] = useState(() => {
     return localStorage.getItem('mooyd_muted') === 'true';
   });
+  const [dailyStats, setDailyStats] = useState(() => {
+    const saved = localStorage.getItem('mooyd_daily_stats');
+    return saved ? JSON.parse(saved) : {};
+  });
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
   
   // Unified actions state
   const [userActions, setUserActions] = useState(() => {
@@ -60,7 +73,46 @@ function App() {
     localStorage.setItem('mooyd_muted', isMuted);
   }, [isMuted]);
 
-  const allActions = useMemo(() => userActions, [userActions]);
+  useEffect(() => {
+    localStorage.setItem('mooyd_test_mode', isTestMode);
+  }, [isTestMode]);
+
+  useEffect(() => {
+    const today = new Date().toLocaleDateString();
+    localStorage.setItem('mooyd_daily_rerolls', JSON.stringify({ [today]: dailyRerolls }));
+  }, [dailyRerolls]);
+
+
+  useEffect(() => {
+    localStorage.setItem('mooyd_daily_stats', JSON.stringify(dailyStats));
+  }, [dailyStats]);
+
+  useEffect(() => {
+    let interval;
+    if (isTimerRunning && timeLeft > 0) {
+      interval = setInterval(() => {
+        setTimeLeft(prev => prev - 1);
+      }, 1000);
+    } else if (timeLeft === 0 && isTimerRunning) {
+      setIsTimerRunning(false);
+      if (window.navigator.vibrate) {
+        window.navigator.vibrate([200, 100, 200]);
+      }
+      playSound('success');
+    }
+    return () => clearInterval(interval);
+  }, [isTimerRunning, timeLeft]);
+
+  const allActions = useMemo(() => {
+    if (isTestMode) {
+      return [
+        { id: 't1', name: 'テスト用アクション (5分)', mood: userMoods.map(m => m.id), duration: 5 },
+        { id: 't2', name: 'テスト用アクション (10分)', mood: userMoods.map(m => m.id), duration: 10 },
+        { id: 't3', name: 'テスト用アクション (15分)', mood: userMoods.map(m => m.id), duration: 15 },
+      ];
+    }
+    return userActions;
+  }, [userActions, isTestMode, userMoods]);
 
   // Sound Effect Helper
   const playSound = (type) => {
@@ -89,56 +141,79 @@ function App() {
     } catch (e) { console.error(e); }
   };
 
+  const getWeightedRandom = (pool) => {
+    if (pool.length === 0) return null;
+    const totalWeight = pool.reduce((sum, a) => sum + (a.weight || 1.0), 0);
+    let random = Math.random() * totalWeight;
+    for (const action of pool) {
+      random -= (action.weight || 1.0);
+      if (random <= 0) return action;
+    }
+    return pool[0];
+  };
+
   const handleSync = () => {
     playSound('click');
-    const filtered = allActions.filter(a => {
-      const moodMatch = a.mood.includes(selectedMood);
-      const energyRange = a.energy || [0, 100];
-      return moodMatch && energy >= energyRange[0] && energy <= energyRange[1];
-    });
-
-    const pool = filtered.length > 0 ? filtered : allActions.filter(a => a.mood.includes(selectedMood));
-    const random = pool[Math.floor(Math.random() * pool.length)];
+    const pool = allActions.filter(a => a.mood.includes(selectedMood));
+    const random = getWeightedRandom(pool);
     setRecommendation(random);
+    setTimeLeft((random?.duration || 0) * 60);
+    setIsTimerRunning(false);
     setView('result');
     setTimeout(() => playSound('success'), 500);
   };
 
   const handleReroll = () => {
+    if (!isTestMode && dailyRerolls >= 3) {
+      alert('1日の引き直し制限（3回）に達しました。');
+      return;
+    }
     playSound('click');
     setIsRerolling(true);
     setTimeout(() => {
-      const filtered = allActions.filter(a => {
-        const moodMatch = a.mood.includes(selectedMood);
-        const energyRange = a.energy || [0, 100];
-        return moodMatch && energy >= energyRange[0] && energy <= energyRange[1] && a.id !== recommendation?.id;
-      });
-      const pool = filtered.length > 0 ? filtered : allActions.filter(a => a.mood.includes(selectedMood) && a.id !== recommendation?.id);
-      const random = pool[Math.floor(Math.random() * pool.length)];
+      const pool = allActions.filter(a => a.mood.includes(selectedMood) && a.id !== recommendation?.id);
+      const random = getWeightedRandom(pool);
       setRecommendation(random);
+      setTimeLeft((random?.duration || 0) * 60);
+      setIsTimerRunning(false);
       setIsRerolling(false);
+      if (!isTestMode) setDailyRerolls(prev => prev + 1);
       playSound('success');
     }, 400);
   };
 
-  const handleDone = () => {
+  const handleDone = (rating) => {
     playSound('click');
+    const today = new Date().toLocaleDateString();
     const newEntry = {
       id: Date.now(),
       name: recommendation.name,
       mood: selectedMood,
-      energy: energy,
+      rating: rating,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
     setHistory([newEntry, ...history].slice(0, 5));
+    const ratingMultipliers = { '🥉': 0.5, '🥈': 1.1, '🥇': 1.5 };
+    const multiplier = ratingMultipliers[rating] || 1;
+
+    setUserActions(userActions.map(a => {
+      if (a.id === recommendation.id) {
+        const currentWeight = a.weight || 1.0;
+        const newWeight = Math.min(Math.max(currentWeight * multiplier, 0.1), 5.0);
+        return { ...a, weight: newWeight };
+      }
+      return a;
+    }));
+
+    setDailyStats(prev => ({
+      ...prev,
+      [today]: (prev[today] || 0) + 1
+    }));
     setView('dashboard');
+    setIsTimerRunning(false);
+    setTimeLeft(0);
   };
 
-  const getEnergyIcon = () => {
-    if (energy > 80) return <Zap className="text-amber-400" size={20} fill="currentColor" />;
-    if (energy > 40) return <Zap className="text-cyan-400" size={20} />;
-    return <Zap className="text-slate-300" size={20} />;
-  };
 
   return (
     <div className="min-h-screen flex items-start sm:items-center justify-center p-4 sm:p-6 bg-slate-50">
@@ -164,28 +239,6 @@ function App() {
                 </button>
               </div>
 
-              <div className="mb-12 group">
-                <div className="flex justify-between items-end mb-6">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-cyan-50 transition-colors">
-                      {getEnergyIcon()}
-                    </div>
-                    <label className="text-sm font-bold text-slate-400 uppercase tracking-widest">Energy</label>
-                  </div>
-                  <span className="text-4xl font-light text-slate-800 tabular-nums">
-                    {energy}<span className="text-lg text-cyan-500 font-medium ml-0.5">%</span>
-                  </span>
-                </div>
-                <div className="relative h-8 flex items-center">
-                  <input 
-                    type="range" min="0" max="100" value={energy} 
-                    onChange={(e) => setEnergy(parseInt(e.target.value))}
-                    className="w-full relative z-10"
-                  />
-                  <div className="absolute inset-x-0 h-2 bg-slate-100 rounded-full"></div>
-                  <div className="absolute left-0 h-2 bg-gradient-to-r from-cyan-300 to-cyan-500 rounded-full transition-all duration-300" style={{ width: `${energy}%` }}></div>
-                </div>
-              </div>
 
               <div className="mb-10">
                 <label className="block text-sm font-bold text-slate-400 uppercase tracking-widest mb-6 px-1">Current Mood</label>
@@ -215,17 +268,24 @@ function App() {
               </button>
             </div>
 
+            <ProductivityChart data={dailyStats} />
+
             {history.length > 0 && (
               <div className="bg-white/40 backdrop-blur-lg rounded-[2rem] p-6 border border-white/50 animate-in slide-in-from-bottom-4 duration-1000">
-                <div className="flex items-center gap-2 mb-4 px-2">
-                  <Clock size={16} className="text-slate-400" />
-                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Recent Activity</h3>
+                <div className="flex items-center justify-between mb-4 px-2">
+                  <div className="flex items-center gap-2">
+                    <Clock size={16} className="text-slate-400" />
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Recent Activity</h3>
+                  </div>
+                  <button onClick={() => { if(confirm('履歴を削除しますか？')) setHistory([]); }} className="text-[10px] font-bold text-slate-300 hover:text-red-400 uppercase tracking-widest transition-colors">Clear</button>
                 </div>
                 <div className="space-y-2">
                   {history.map((item) => (
                     <div key={item.id} className="flex items-center justify-between p-4 bg-white/60 rounded-3xl border border-white/50 group hover:bg-white/90 transition-all duration-500 shadow-sm hover:shadow-md hover:-translate-y-0.5">
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-cyan-50 rounded-2xl flex items-center justify-center text-cyan-600 text-xs font-bold shadow-inner">{item.energy}%</div>
+                        <div className="w-10 h-10 bg-cyan-50 rounded-2xl flex items-center justify-center shadow-inner">
+                          {item.rating ? <span className="text-xl">{item.rating}</span> : <CheckCircle2 size={20} className="text-cyan-600" />}
+                        </div>
                         <div>
                           <p className="text-sm font-bold text-slate-700">{item.name}</p>
                           <div className="flex items-center gap-2 mt-0.5">
@@ -244,14 +304,46 @@ function App() {
         ) : view === 'result' ? (
           <div className={`flex flex-col items-center transition-all duration-500 ${isRerolling ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
             <div className="bg-white rounded-[3rem] p-10 sm:p-12 shadow-2xl shadow-slate-200 border border-slate-100 text-center w-full animate-in zoom-in-95 duration-500">
-              <div className="w-20 h-20 bg-gradient-to-br from-cyan-50 to-cyan-100 rounded-[2.5rem] flex items-center justify-center text-cyan-600 mx-auto mb-10 shadow-inner">
+              <div className="w-20 h-20 bg-gradient-to-br from-cyan-50 to-cyan-100 rounded-[2.5rem] flex items-center justify-center text-cyan-600 mx-auto mb-8 shadow-inner">
                 <Zap size={40} fill="currentColor" className="opacity-80" />
               </div>
-              <h2 className="text-3xl sm:text-4xl font-bold text-slate-800 leading-tight mb-12">{recommendation?.name}</h2>
-              <div className="flex flex-col gap-4">
-                <button onClick={handleDone} className="w-full bg-slate-900 text-white rounded-3xl py-5 px-8 font-bold text-lg flex items-center justify-center gap-3 hover:bg-cyan-600 transition-all duration-300">
-                  <CheckCircle2 size={24} /> 完了する
-                </button>
+              <h2 className="text-3xl sm:text-4xl font-bold text-slate-800 leading-tight mb-8">{recommendation?.name}</h2>
+              
+              {recommendation?.duration > 0 && (
+                <div className="mb-10 p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
+                  <div className="text-5xl font-light text-slate-800 tabular-nums mb-4">
+                    {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
+                  </div>
+                  <button 
+                    onClick={() => { playSound('click'); setIsTimerRunning(!isTimerRunning); }}
+                    className={`px-8 py-2.5 rounded-2xl text-xs font-bold border transition-all tracking-widest ${isTimerRunning ? 'bg-red-50 text-red-500 border-red-100' : 'bg-white text-cyan-600 border-cyan-100 shadow-sm'}`}
+                  >
+                    {isTimerRunning ? 'PAUSE' : 'START TIMER'}
+                  </button>
+                </div>
+              )}
+
+              <div className="space-y-8">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-6">How was it?</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      { rating: 1, icon: '🥉', label: 'まあまあ' },
+                      { rating: 2, icon: '🥈', label: 'いい感じ' },
+                      { rating: 3, icon: '🥇', label: '最高！' }
+                    ].map((item) => (
+                      <button 
+                        key={item.rating}
+                        onClick={() => handleDone(item.icon)}
+                        className="bg-white border border-slate-100 rounded-[2rem] p-5 hover:border-cyan-500 hover:bg-cyan-50 transition-all group shadow-sm hover:shadow-xl hover:-translate-y-1 flex flex-col items-center gap-2"
+                      >
+                        <span className="text-3xl group-hover:scale-125 transition-transform">{item.icon}</span>
+                        <span className="text-[10px] font-bold text-slate-400 tracking-tight">{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <button onClick={handleReroll} disabled={isRerolling} className="w-full bg-transparent text-slate-400 rounded-3xl py-4 px-8 font-semibold hover:bg-slate-50 transition-all flex items-center justify-center gap-2 group">
                   <RefreshCw size={20} className={`${isRerolling ? 'animate-spin' : 'group-hover:rotate-180 transition-transform'}`} /> 他の提案を見る
                 </button>
@@ -263,7 +355,16 @@ function App() {
             <div className="flex items-center justify-between mb-10">
               <button onClick={() => { playSound('click'); setView('dashboard'); setEditingAction(null); setEditingMood(null); }} className="p-3 bg-white rounded-2xl text-slate-400 border border-slate-100 shadow-sm"><ArrowLeft size={20} /></button>
               <h2 className="text-xl font-bold text-slate-800 tracking-tight">Settings</h2>
-              <button onClick={() => { playSound('click'); setIsMuted(!isMuted); }} className={`p-3 rounded-2xl border shadow-sm ${isMuted ? 'bg-red-50 text-red-400 border-red-100' : 'bg-white text-slate-400 border-slate-100'}`}>{isMuted ? <X size={20} /> : <Smile size={20} />}</button>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => { playSound('click'); setIsTestMode(!isTestMode); }} 
+                  className={`p-3 rounded-2xl border shadow-sm transition-all ${isTestMode ? 'bg-amber-50 text-amber-500 border-amber-100' : 'bg-white text-slate-400 border-slate-100'}`}
+                  title="Test Mode"
+                >
+                  <Sparkles size={20} fill={isTestMode ? "currentColor" : "none"} />
+                </button>
+                <button onClick={() => { playSound('click'); setIsMuted(!isMuted); }} className={`p-3 rounded-2xl border shadow-sm ${isMuted ? 'bg-red-50 text-red-400 border-red-100' : 'bg-white text-slate-400 border-slate-100'}`}>{isMuted ? <X size={20} /> : <Smile size={20} />}</button>
+              </div>
             </div>
 
             <div className="space-y-12">
@@ -292,7 +393,13 @@ function App() {
                         <span className="text-xs font-bold text-slate-700">{mood.label}</span>
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button onClick={() => setEditingMood(mood)} className="text-slate-300 hover:text-cyan-500"><Edit3 size={12} /></button>
-                          <button onClick={() => setUserMoods(userMoods.filter(m => m.id !== mood.id))} className="text-slate-300 hover:text-red-400"><Trash2 size={12} /></button>
+                          <button onClick={() => {
+                            setUserMoods(userMoods.filter(m => m.id !== mood.id));
+                            setUserActions(userActions.map(a => ({
+                              ...a,
+                              mood: a.mood.filter(m => m !== mood.id)
+                            })));
+                          }} className="text-slate-300 hover:text-red-400"><Trash2 size={12} /></button>
                         </div>
                       </div>
                     ))}
@@ -380,11 +487,11 @@ function AddMoodForm({ onAdd, onUpdate, initialData, onCancel }) {
 function AddActionForm({ onAdd, onUpdate, initialData, onCancel, moods }) {
   const [name, setName] = useState('');
   const [selectedMoods, setSelectedMoods] = useState([]);
-  const [energyRange, setEnergyRange] = useState([0, 100]);
+  const [duration, setDuration] = useState(0);
 
   useEffect(() => {
-    if (initialData) { setName(initialData.name); setSelectedMoods(initialData.mood); setEnergyRange(initialData.energy || [0, 100]); }
-    else { setName(''); setSelectedMoods([]); setEnergyRange([0, 100]); }
+    if (initialData) { setName(initialData.name); setSelectedMoods(initialData.mood); setDuration(initialData.duration || 0); }
+    else { setName(''); setSelectedMoods([]); setDuration(0); }
   }, [initialData]);
 
   const toggleMood = (mood) => {
@@ -395,9 +502,9 @@ function AddActionForm({ onAdd, onUpdate, initialData, onCancel, moods }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!name || selectedMoods.length === 0) return;
-    const data = { id: initialData?.id || Date.now(), name, mood: selectedMoods, energy: energyRange };
+    const data = { id: initialData?.id || Date.now(), name, mood: selectedMoods, duration };
     if (initialData) onUpdate(data); else onAdd(data);
-    setName(''); setSelectedMoods([]); setEnergyRange([0, 100]);
+    setName(''); setSelectedMoods([]); setDuration(0);
   };
 
   return (
@@ -405,9 +512,15 @@ function AddActionForm({ onAdd, onUpdate, initialData, onCancel, moods }) {
       <div className="mb-4">
         <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Action Name" className="w-full bg-white border border-slate-100 rounded-xl py-2 px-4 text-sm" />
       </div>
-      <div className="mb-4">
-        <div className="flex justify-between text-[10px] font-bold text-slate-400 mb-2"><span>Energy Range</span><span>{energyRange[0]}%-{energyRange[1]}%</span></div>
-        <div className="flex gap-2"><input type="range" min="0" max="100" value={energyRange[0]} onChange={e => setEnergyRange([Math.min(parseInt(e.target.value), energyRange[1]), energyRange[1]])} className="flex-1" /><input type="range" min="0" max="100" value={energyRange[1]} onChange={e => setEnergyRange([energyRange[0], Math.max(parseInt(e.target.value), energyRange[0])])} className="flex-1" /></div>
+      <div className="mb-6">
+        <label className="block text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-widest px-1">Duration</label>
+        <div className="flex gap-2">
+          {[0, 5, 10, 15].map(d => (
+            <button key={d} type="button" onClick={() => setDuration(d)} className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${duration === d ? 'bg-cyan-500 border-cyan-500 text-white shadow-lg shadow-cyan-100' : 'bg-white border-slate-100 text-slate-400 hover:border-cyan-100'}`}>
+              {d === 0 ? 'None' : `${d}m`}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="flex flex-wrap gap-1 mb-6">
         {moods.map(mood => (
@@ -416,6 +529,78 @@ function AddActionForm({ onAdd, onUpdate, initialData, onCancel, moods }) {
       </div>
       <button type="submit" className="w-full bg-cyan-500 text-white py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-2"><Plus size={16} /> {initialData ? 'Update' : 'Add'}</button>
     </form>
+  );
+}
+
+function ProductivityChart({ data }) {
+  const last7Days = [...Array(7)].map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    return d.toLocaleDateString();
+  });
+
+  const values = last7Days.map(date => data[date] || 0);
+  const maxVal = Math.max(...values, 5); 
+  
+  const width = 300;
+  const height = 100;
+  const padding = 20;
+
+  const points = values.map((val, i) => {
+    const x = padding + (i * (width - 2 * padding) / (values.length - 1));
+    const y = height - padding - (val / maxVal * (height - 2 * padding));
+    return `${x},${y}`;
+  }).join(' ');
+
+  return (
+    <div className="bg-white/40 backdrop-blur-lg rounded-[2.5rem] p-8 border border-white/50 animate-in slide-in-from-bottom-4 duration-1000">
+      <div className="flex items-center gap-2 mb-8 px-2">
+        <LayoutGrid size={16} className="text-slate-400" />
+        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Activity Flow</h3>
+      </div>
+      <div className="relative h-[100px] w-full">
+        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
+          <defs>
+            <linearGradient id="lineGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <path
+            d={`M ${padding},${height-padding} L ${points} L ${width-padding},${height-padding} Z`}
+            fill="url(#lineGradient)"
+          />
+          <polyline
+            fill="none"
+            stroke="#0891b2"
+            strokeWidth="4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            points={points}
+          />
+          {values.map((val, i) => {
+             const x = padding + (i * (width - 2 * padding) / (values.length - 1));
+             const y = height - padding - (val / maxVal * (height - 2 * padding));
+             return (
+               <g key={i}>
+                 <circle cx={x} cy={y} r="5" fill="#0891b2" className="drop-shadow-md" />
+                 {val > 0 && <text x={x} y={y - 12} textAnchor="middle" className="text-[10px] font-bold fill-cyan-600">{val}</text>}
+               </g>
+             );
+          })}
+        </svg>
+      </div>
+      <div className="flex justify-between mt-4 px-2">
+        {last7Days.map((date, i) => {
+          const [month, day] = date.split('/').slice(1, 3);
+          return (
+            <span key={i} className={`text-[8px] font-bold uppercase tracking-tighter ${i === 6 ? 'text-cyan-500' : 'text-slate-300'}`}>
+              {i === 6 ? 'Today' : `${month}/${day}`}
+            </span>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
