@@ -216,8 +216,8 @@ function App() {
 
 
   return (
-    <div className="min-h-screen flex items-start sm:items-center justify-center p-4 sm:p-6 bg-slate-50">
-      <div className="w-full max-w-[440px] pt-4 sm:pt-0">
+    <div className="min-h-screen flex items-start sm:items-center justify-center p-4 sm:p-8 bg-slate-50/50">
+      <div className="w-full max-w-[480px] pt-2 sm:pt-0">
         {view === 'dashboard' ? (
           <div className="space-y-6">
             <div className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] p-7 sm:p-9 shadow-2xl shadow-slate-200/60 border border-white/50 animate-in fade-in zoom-in-95 duration-700">
@@ -361,19 +361,57 @@ function App() {
             <div className="flex items-center justify-between mb-10">
               <button onClick={() => { playSound('click'); setView('dashboard'); setEditingAction(null); setEditingMood(null); }} className="p-3 bg-white rounded-2xl text-slate-400 border border-slate-100 shadow-sm"><ArrowLeft size={20} /></button>
               <h2 className="text-xl font-bold text-slate-800 tracking-tight">Settings</h2>
-              <div className="flex gap-2">
-                <button 
-                  onClick={() => { playSound('click'); setIsTestMode(!isTestMode); }} 
-                  className={`p-3 rounded-2xl border shadow-sm transition-all ${isTestMode ? 'bg-amber-50 text-amber-500 border-amber-100' : 'bg-white text-slate-400 border-slate-100'}`}
-                  title="Test Mode"
-                >
-                  <Sparkles size={20} fill={isTestMode ? "currentColor" : "none"} />
-                </button>
-                <button onClick={() => { playSound('click'); setIsMuted(!isMuted); }} className={`p-3 rounded-2xl border shadow-sm ${isMuted ? 'bg-red-50 text-red-400 border-red-100' : 'bg-white text-slate-400 border-slate-100'}`}>{isMuted ? <X size={20} /> : <Smile size={20} />}</button>
-              </div>
+              <div className="w-10"></div> {/* Spacer for symmetry */}
             </div>
 
             <div className="space-y-12">
+              {/* Preferences */}
+              <section>
+                <div className="flex items-center gap-2 mb-6 px-1">
+                  <div className="w-1 h-4 bg-cyan-500 rounded-full"></div>
+                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Preferences</h3>
+                </div>
+                <div className="space-y-3">
+                  {/* Silent Mode */}
+                  <div className="flex items-center justify-between p-4 bg-white rounded-[1.5rem] border border-slate-100 shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2.5 rounded-xl ${isMuted ? 'bg-red-50 text-red-500' : 'bg-cyan-50 text-cyan-600'}`}>
+                        {isMuted ? <X size={20} /> : <Smile size={20} />}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-700">サイレントモード</p>
+                        <p className="text-[10px] text-slate-400 font-medium">操作音をオフにします</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => { playSound('click'); setIsMuted(!isMuted); }}
+                      className={`w-12 h-6 rounded-full relative transition-all duration-300 ${isMuted ? 'bg-red-500' : 'bg-slate-200'}`}
+                    >
+                      <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300 ${isMuted ? 'left-7' : 'left-1'}`}></div>
+                    </button>
+                  </div>
+
+                  {/* Test Mode */}
+                  <div className="flex items-center justify-between p-4 bg-white rounded-[1.5rem] border border-slate-100 shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2.5 rounded-xl ${isTestMode ? 'bg-amber-50 text-amber-500' : 'bg-slate-50 text-slate-400'}`}>
+                        <Sparkles size={20} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-700">テストモード</p>
+                        <p className="text-[10px] text-slate-400 font-medium">制限解除とテスト用アクションの表示</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => { playSound('click'); setIsTestMode(!isTestMode); }}
+                      className={`w-12 h-6 rounded-full relative transition-all duration-300 ${isTestMode ? 'bg-amber-500' : 'bg-slate-200'}`}
+                    >
+                      <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300 ${isTestMode ? 'left-7' : 'left-1'}`}></div>
+                    </button>
+                  </div>
+                </div>
+              </section>
+
               {/* Mood Management */}
               <section>
                 <div className="flex items-center justify-between mb-6 px-1">
