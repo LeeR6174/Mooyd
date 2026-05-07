@@ -6,10 +6,10 @@ import {
 } from 'lucide-react';
 
 const defaultMoods = [
-  { id: '集中', label: '集中', icon: '🎯' },
-  { id: 'リラックス', label: 'リラックス', icon: '🌿' },
-  { id: '運動', label: '運動', icon: '🏃' },
-  { id: 'クリエイティブ', label: 'クリエイティブ', icon: '🎨' },
+  { id: '集中', label: '集中', icon: '🎯', desc: '作業や勉強に' },
+  { id: 'リラックス', label: 'リラックス', icon: '🌿', desc: '心身の休息に' },
+  { id: '運動', label: '運動', icon: '🏃', desc: 'リフレッシュに' },
+  { id: 'クリエイティブ', label: 'クリエイティブ', icon: '🎨', desc: '新しい発想に' },
 ];
 
 function App() {
@@ -241,21 +241,27 @@ function App() {
 
 
               <div className="mb-10">
-                <label className="block text-sm font-bold text-slate-400 uppercase tracking-widest mb-6 px-1">Current Mood</label>
+                <div className="flex items-center justify-between mb-6 px-1">
+                  <label className="text-sm font-bold text-slate-400 uppercase tracking-widest">Current Mood</label>
+                  <span className="text-[10px] font-bold text-cyan-500/60 uppercase bg-cyan-50 px-2 py-0.5 rounded-md">提案を絞り込む</span>
+                </div>
                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   {userMoods.map((mood) => (
                     <button
                       key={mood.id}
                       onClick={() => { playSound('click'); setSelectedMood(mood.id); }}
-                      className={`relative overflow-hidden py-4 px-3 rounded-3xl text-sm font-semibold transition-all duration-300 border-2
+                      className={`relative overflow-hidden py-5 px-3 rounded-3xl text-sm font-semibold transition-all duration-300 border-2
                         ${selectedMood === mood.id 
                           ? 'bg-cyan-500 border-cyan-500 text-white shadow-xl shadow-cyan-200 -translate-y-1' 
                           : 'bg-white border-slate-100 text-slate-500 hover:border-cyan-200 hover:bg-slate-50 active:scale-95'}
                       `}
                     >
-                      <div className="flex flex-col items-center gap-1.5 relative z-10">
-                        <span className="text-2xl">{mood.icon}</span>
-                        <span className="truncate w-full px-1">{mood.label}</span>
+                      <div className="flex flex-col items-center gap-1 relative z-10">
+                        <span className="text-2xl mb-1">{mood.icon}</span>
+                        <span className="font-bold">{mood.label}</span>
+                        <span className={`text-[9px] font-medium opacity-60 ${selectedMood === mood.id ? 'text-white' : 'text-slate-400'}`}>
+                          {mood.desc || '気分に合わせて'}
+                        </span>
                       </div>
                     </button>
                   ))}
@@ -469,8 +475,8 @@ function AddMoodForm({ onAdd, onUpdate, initialData, onCancel }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!label) return;
-    if (initialData) onUpdate({ ...initialData, label, icon });
-    else onAdd({ id: label, label, icon });
+    if (initialData) onUpdate({ ...initialData, label, icon, desc: '' });
+    else onAdd({ id: label, label, icon, desc: '' });
     setLabel(''); setIcon('✨');
   };
 
