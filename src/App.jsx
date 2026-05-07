@@ -184,6 +184,9 @@ function App() {
 
   const handleDone = (rating) => {
     playSound('click');
+    if (window.navigator.vibrate) {
+      window.navigator.vibrate(50);
+    }
     const today = new Date().toLocaleDateString();
     const newEntry = {
       id: Date.now(),
