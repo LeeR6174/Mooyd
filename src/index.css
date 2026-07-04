@@ -1,48 +1,250 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap');
+:root {
+  --bg-color: #0f172a;
+  --surface-color: #1e293b;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  
+  --study-color: #3b82f6;
+  --study-glow: rgba(59, 130, 246, 0.4);
+  
+  --entertain-color: #f59e0b;
+  --entertain-glow: rgba(245, 158, 11, 0.4);
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-@layer base {
-  body {
-    @apply font-['Outfit'] bg-slate-50 text-slate-700 antialiased;
-  }
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-/* Custom Range Slider Styling */
-input[type='range'] {
-  @apply appearance-none bg-transparent cursor-pointer w-full relative z-10;
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-input[type='range']::-webkit-slider-runnable-track {
-  @apply bg-transparent h-2;
+body {
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow-x: hidden;
 }
 
-input[type='range']::-webkit-slider-thumb {
-  @apply appearance-none bg-white border-[3px] border-cyan-500 shadow-xl rounded-full h-7 w-7 transition-all duration-200 hover:scale-110 active:scale-95;
-  margin-top: -10px;
+#root {
+  width: 100%;
+  max-width: 600px;
+  padding: 2rem 1rem;
 }
 
-input[type='range']:focus {
-  @apply outline-none;
+/* Glassmorphism utility */
+.glass {
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* Typography */
+h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.025em;
+}
+
+.subtitle {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 2rem;
+}
+
+/* Bank Display */
+.bank-display {
+  text-align: center;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.bank-display::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 60%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.bank-label {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.bank-time {
+  font-size: 4rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  position: relative;
+  z-index: 1;
+  text-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* Timer Cards */
+.cards-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.timer-card {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.timer-card:hover {
+  transform: translateY(-4px);
+}
+
+.timer-card.study {
+  border-top: 4px solid var(--study-color);
+}
+
+.timer-card.study.active {
+  box-shadow: 0 8px 32px 0 var(--study-glow);
+}
+
+.timer-card.entertain {
+  border-top: 4px solid var(--entertain-color);
+}
+
+.timer-card.entertain.active {
+  box-shadow: 0 8px 32px 0 var(--entertain-glow);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.card-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.timer-display {
+  font-size: 3rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 1.5rem;
+}
+
+.timer-card.study .timer-display {
+  color: var(--study-color);
+}
+
+.timer-card.entertain .timer-display {
+  color: var(--entertain-color);
+}
+
+/* Buttons */
+.btn {
+  border: none;
+  border-radius: 50px;
+  padding: 0.75rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: white;
+}
+
+.btn:active {
+  transform: scale(0.95);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-study {
+  background-color: var(--study-color);
+  box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.39);
+}
+
+.btn-study:hover:not(:disabled) {
+  background-color: #2563eb;
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.23);
+}
+
+.btn-entertain {
+  background-color: var(--entertain-color);
+  box-shadow: 0 4px 14px 0 rgba(245, 158, 11, 0.39);
+}
+
+.btn-entertain:hover:not(:disabled) {
+  background-color: #d97706;
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.23);
+}
+
+.btn-stop {
+  background-color: #ef4444;
+  box-shadow: 0 4px 14px 0 rgba(239, 68, 68, 0.39);
+}
+
+.btn-stop:hover:not(:disabled) {
+  background-color: #dc2626;
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.23);
 }
 
 /* Animations */
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.6; }
+  100% { opacity: 1; }
 }
 
-@keyframes slide-up {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+.pulsing {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-.animate-fade-in-up {
-  animation: fade-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards, slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.glass {
-  @apply bg-white/70 backdrop-blur-md border border-white/40;
+.animate-slide-down {
+  animation: slideDown 0.5s ease-out forwards;
 }
