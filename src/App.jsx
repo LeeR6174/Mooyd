@@ -9,8 +9,12 @@ function App() {
     studyActive,
     studyElapsed,
     entertainActive,
-    toggleStudy,
-    toggleEntertain,
+    startStudy,
+    pauseStudy,
+    stopStudy,
+    startEntertain,
+    pauseEntertain,
+    stopEntertain,
   } = useTimeBank();
 
   const [showInfo, setShowInfo] = useState(false);
@@ -34,15 +38,19 @@ function App() {
           type="study"
           active={studyActive}
           timeElapsed={studyElapsed}
-          onToggle={toggleStudy}
+          onStart={startStudy}
+          onPause={pauseStudy}
+          onStop={stopStudy}
           disabled={entertainActive}
         />
         
         <TimerCard 
           type="entertain"
           active={entertainActive}
-          timeRemaining={entertainActive ? bankedTime : bankedTime}
-          onToggle={toggleEntertain}
+          timeRemaining={bankedTime}
+          onStart={startEntertain}
+          onPause={pauseEntertain}
+          onStop={stopEntertain}
           disabled={studyActive || bankedTime <= 0}
           onInfoClick={() => setShowInfo(true)}
         />
@@ -63,7 +71,7 @@ function App() {
               </ol>
               <p>※娯楽スタートを押すと、このショートカットが自動で起動し、タイマーがセットされます。</p>
             </div>
-            <button className="btn btn-study modal-close-btn" onClick={() => setShowInfo(false)}>
+            <button className="btn btn-entertain modal-close-btn" onClick={() => setShowInfo(false)}>
               閉じる
             </button>
           </div>

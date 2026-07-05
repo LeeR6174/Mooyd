@@ -1,7 +1,7 @@
-import { Play, Square, HelpCircle, Timer, Gamepad2 } from 'lucide-react';
+import { Play, Pause, Square, HelpCircle, Timer, Gamepad2 } from 'lucide-react';
 import { formatTime } from '../utils/formatTime';
 
-export function TimerCard({ type, active, timeElapsed, timeRemaining, onToggle, disabled, onInfoClick }) {
+export function TimerCard({ type, active, timeElapsed, timeRemaining, onStart, onPause, onStop, disabled, onInfoClick }) {
   const isStudy = type === 'study';
   
   const title = isStudy ? 'Study Time' : 'Entertainment';
@@ -11,11 +11,11 @@ export function TimerCard({ type, active, timeElapsed, timeRemaining, onToggle, 
   return (
     <div className={`glass timer-card ${type} ${active ? 'active' : ''}`}>
       <div className="card-header">
-        <Icon size={24} className="title-icon" color={isStudy ? 'var(--study-color)' : 'var(--entertain-color)'} />
+        <Icon size={20} className="title-icon" color={isStudy ? 'var(--study-color)' : 'var(--entertain-color)'} />
         <h2 className="card-title">{title}</h2>
         {onInfoClick && (
           <button className="icon-btn" onClick={onInfoClick} aria-label="設定ヘルプ" title="設定ヘルプ">
-            <HelpCircle size={20} />
+            <HelpCircle size={18} />
           </button>
         )}
         {active && <div className="pulsing" style={{
@@ -28,23 +28,36 @@ export function TimerCard({ type, active, timeElapsed, timeRemaining, onToggle, 
         {formatTime(displayTime || 0)}
       </div>
 
-      <button 
-        className={`btn ${active ? 'btn-stop' : isStudy ? 'btn-study' : 'btn-entertain'}`}
-        onClick={onToggle}
-        disabled={disabled}
-      >
-        {active ? (
-          <>
-            <Square size={20} fill="currentColor" />
-            Stop
-          </>
-        ) : (
-          <>
-            <Play size={20} fill="currentColor" />
+      <div className="controls-row">
+        {!active ? (
+          <button 
+            className={`btn ${isStudy ? 'btn-study' : 'btn-entertain'}`}
+            onClick={onStart}
+            disabled={disabled}
+          >
+            <Play size={18} fill="currentColor" />
             Start
-          </>
+          </button>
+        ) : (
+          <button 
+            className="btn btn-pause"
+            onClick={onPause}
+          >
+            <Pause size={18} fill="currentColor" />
+            Pause
+          </button>
         )}
-      </button>
+        {isStudy && (
+          <button 
+            className="btn btn-stop"
+            onClick={onStop}
+            disabled={!active && timeElapsed === 0}
+          >
+            <Square size={18} fill="currentColor" />
+            Stop
+          </button>
+        )}
+      </div>
     </div>
   );
 }

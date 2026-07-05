@@ -126,44 +126,63 @@ export function useTimeBank() {
     }
   };
 
-  const toggleStudy = () => {
-    if (!studyActive) {
-      if (entertainActive) setEntertainActive(false);
-      setStudyElapsed(0);
-      setStudyActive(true);
-      requestWakeLock(); // Keep screen on during study
-    } else {
-      setStudyActive(false);
-      if (wakeLockRef.current) {
-        wakeLockRef.current.release().catch(() => {});
-        wakeLockRef.current = null;
-      }
+  const releaseWakeLock = () => {
+    if (wakeLockRef.current) {
+      wakeLockRef.current.release().catch(() => {});
+      wakeLockRef.current = null;
     }
   };
 
-  const toggleEntertain = () => {
+  const startStudy = () => {
+    if (!studyActive) {
+      if (entertainActive) setEntertainActive(false);
+      setStudyActive(true);
+      requestWakeLock();
+    }
+  };
+
+  const pauseStudy = () => {
+    if (studyActive) {
+      setStudyActive(false);
+      releaseWakeLock();
+    }
+  };
+
+  const stopStudy = () => {
+    setStudyActive(false);
+    setStudyElapsed(0);
+    releaseWakeLock();
+  };
+
+  const startEntertain = () => {
     if (!entertainActive) {
       if (bankedTime <= 0) return;
-      if (studyActive) setStudyActive(false);
+      if (studyActive) pauseStudy();
       
-      // Initialize Audio Context on user interaction
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       if (AudioContext) {
         const ctx = new AudioContext();
         ctx.resume();
       }
 
-      // iOSショートカット連携 (提案2)
-      // 「タイマーセット」という名前のショートカットを起動し、秒数を渡す
       const shortcutUrl = `shortcuts://run-shortcut?name=${encodeURIComponent('タイマーセット')}&input=${bankedTime}`;
       window.location.href = shortcutUrl;
 
       requestWakeLock();
-
       setEntertainActive(true);
-    } else {
-      setEntertainActive(false);
     }
+  };
+
+  const pauseEntertain = () => {
+    if (entertainActive) {
+      setEntertainActive(false);
+      releaseWakeLock();
+    }
+  };
+
+  const stopEntertain = () => {
+    setEntertainActive(false);
+    releaseWakeLock();
   };
 
   return {
@@ -171,7 +190,12 @@ export function useTimeBank() {
     studyActive,
     studyElapsed,
     entertainActive,
-    toggleStudy,
-    toggleEntertain,
+    startStudy,
+    pauseStudy,
+    stopStudy,
+    startEntertain,
+    pauseEntertain,
+    stopEntertain,
   };
 }
+
