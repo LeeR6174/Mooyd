@@ -33,6 +33,26 @@ export function useTimeBank() {
     return saved ? parseInt(saved, 10) : 0;
   });
 
+  const [coins, setCoins] = useState(() => {
+    const saved = localStorage.getItem('timeBank_coins');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
+  const [records, setRecords] = useState(() => {
+    const saved = localStorage.getItem('timeBank_records');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [profile, setProfile] = useState(() => {
+    const saved = localStorage.getItem('timeBank_profile');
+    return saved ? JSON.parse(saved) : {
+      title: 'Beginner',
+      icon: '👤',
+      theme: 'default',
+      unlocked: ['title_Beginner', 'icon_👤', 'theme_default']
+    };
+  });
+
   const [studyActive, setStudyActive] = useState(false);
   const [studyElapsed, setStudyElapsed] = useState(0);
   const [entertainActive, setEntertainActive] = useState(false);
@@ -50,6 +70,18 @@ export function useTimeBank() {
   useEffect(() => {
     localStorage.setItem('timeBank_bankedTime', bankedTime.toString());
   }, [bankedTime]);
+
+  useEffect(() => {
+    localStorage.setItem('timeBank_coins', coins.toString());
+  }, [coins]);
+
+  useEffect(() => {
+    localStorage.setItem('timeBank_records', JSON.stringify(records));
+  }, [records]);
+
+  useEffect(() => {
+    localStorage.setItem('timeBank_profile', JSON.stringify(profile));
+  }, [profile]);
 
   const triggerAlarm = useCallback(() => {
     playAlarm();
@@ -72,6 +104,7 @@ export function useTimeBank() {
         if (delta > 0) {
           setStudyElapsed(prev => prev + delta);
           setBankedTime(prev => prev + delta); // Real-time increment
+          setCoins(prev => prev + delta); // Add coins
           lastTick += delta * 1000;
         }
       }, 1000);
@@ -149,6 +182,13 @@ export function useTimeBank() {
   };
 
   const stopStudy = () => {
+    if (studyElapsed > 0) {
+      setRecords(prev => [...prev, {
+        id: Date.now(),
+        date: new Date().toISOString(),
+        duration: studyElapsed
+      }]);
+    }
     setStudyActive(false);
     setStudyElapsed(0);
     releaseWakeLock();
@@ -185,8 +225,30 @@ export function useTimeBank() {
     releaseWakeLock();
   };
 
+  const buyItem = (item) => {
+    if (coins >= item.price && !profile.unlocked.includes(item.id)) {
+      setCoins(prev => prev - item.price);
+      setProfile(prev => ({
+        ...prev,
+        unlocked: [...prev.unlocked, item.id]
+      }));
+      return true; // Success
+    }
+    return false; // Failed
+  };
+
+  const equipItem = (type, value) => {
+    setProfile(prev => ({
+      ...prev,
+      [type]: value
+    }));
+  };
+
   return {
     bankedTime,
+    coins,
+    records,
+    profile,
     studyActive,
     studyElapsed,
     entertainActive,
@@ -196,6 +258,8 @@ export function useTimeBank() {
     startEntertain,
     pauseEntertain,
     stopEntertain,
+    buyItem,
+    equipItem,
   };
 }
 
