@@ -1,4 +1,4 @@
-import React from 'react';
+import { useState } from 'react';
 import { useTimeBank } from './hooks/useTimeBank';
 import { formatTime } from './utils/formatTime';
 import { TimerCard } from './components/TimerCard';
@@ -12,6 +12,8 @@ function App() {
     toggleStudy,
     toggleEntertain,
   } = useTimeBank();
+
+  const [showInfo, setShowInfo] = useState(false);
 
   return (
     <>
@@ -42,8 +44,31 @@ function App() {
           timeRemaining={entertainActive ? bankedTime : bankedTime}
           onToggle={toggleEntertain}
           disabled={studyActive || bankedTime <= 0}
+          onInfoClick={() => setShowInfo(true)}
         />
       </div>
+
+      {showInfo && (
+        <div className="modal-overlay" onClick={() => setShowInfo(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <h3 className="modal-title">iOSショートカットの設定</h3>
+            <div className="modal-body">
+              <p>娯楽タイマーをバックグラウンドでも確実に鳴らすため、iOSの「ショートカット」アプリを使用します。</p>
+              <ol>
+                <li>iPhoneで「ショートカット」アプリを開き、新規作成します。</li>
+                <li>名前を <strong>「タイマーセット」</strong> に変更します。</li>
+                <li>アクションの検索から <strong>「タイマーを開始」</strong> を追加します。</li>
+                <li>「（時間）分間タイマーを開始」と追加されるので、「時間」の部分をタップして <strong>「ショートカットの入力」</strong> を選択します。</li>
+                <li>単位を「分」から <strong>「秒」</strong> に変更します。</li>
+              </ol>
+              <p>※娯楽スタートを押すと、このショートカットが自動で起動し、タイマーがセットされます。</p>
+            </div>
+            <button className="btn btn-study modal-close-btn" onClick={() => setShowInfo(false)}>
+              閉じる
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }

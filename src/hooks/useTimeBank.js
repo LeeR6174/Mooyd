@@ -1,8 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-// 1秒の無音のWAVファイル (Base64)
-const SILENT_WAV_BASE64 = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==';
-
 // Play an alarm sound using the Web Audio API
 const playAlarm = () => {
   const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -40,16 +37,7 @@ export function useTimeBank() {
   const [studyElapsed, setStudyElapsed] = useState(0);
   const [entertainActive, setEntertainActive] = useState(false);
 
-  // Background Audio reference
-  const bgAudioRef = useRef(null);
   const wakeLockRef = useRef(null);
-
-  // Initialize background audio element
-  useEffect(() => {
-    const audio = new Audio(SILENT_WAV_BASE64);
-    audio.loop = true;
-    bgAudioRef.current = audio;
-  }, []);
 
   // Allow requesting notification permission
   useEffect(() => {
@@ -76,39 +64,50 @@ export function useTimeBank() {
   // Study timer effect
   useEffect(() => {
     let interval = null;
+    let lastTick = Date.now();
     if (studyActive) {
       interval = setInterval(() => {
-        setStudyElapsed(prev => prev + 1);
-        setBankedTime(prev => prev + 1); // Real-time increment
+        const now = Date.now();
+        const delta = Math.floor((now - lastTick) / 1000);
+        if (delta > 0) {
+          setStudyElapsed(prev => prev + delta);
+          setBankedTime(prev => prev + delta); // Real-time increment
+          lastTick += delta * 1000;
+        }
       }, 1000);
-    } else if (!studyActive && studyElapsed !== 0) {
+    } else {
       clearInterval(interval);
     }
     return () => clearInterval(interval);
-  }, [studyActive, studyElapsed]);
+  }, [studyActive]);
 
   // Entertain timer effect
   useEffect(() => {
     let interval = null;
+    let lastTick = Date.now();
     if (entertainActive) {
       interval = setInterval(() => {
-        setBankedTime(prev => {
-          if (prev <= 1) {
-            setEntertainActive(false);
-            if (bgAudioRef.current) bgAudioRef.current.pause();
-            if (wakeLockRef.current) {
-              wakeLockRef.current.release().catch(() => {});
-              wakeLockRef.current = null;
+        const now = Date.now();
+        const delta = Math.floor((now - lastTick) / 1000);
+        if (delta > 0) {
+          setBankedTime(prev => {
+            const newTime = prev - delta;
+            if (newTime <= 0) {
+              setEntertainActive(false);
+              if (wakeLockRef.current) {
+                wakeLockRef.current.release().catch(() => {});
+                wakeLockRef.current = null;
+              }
+              triggerAlarm();
+              return 0;
             }
-            triggerAlarm();
-            return 0;
-          }
-          return prev - 1; // Real-time decrement
-        });
+            return newTime;
+          });
+          lastTick += delta * 1000;
+        }
       }, 1000);
     } else {
       clearInterval(interval);
-      if (bgAudioRef.current) bgAudioRef.current.pause();
       if (wakeLockRef.current) {
         wakeLockRef.current.release().catch(() => {});
         wakeLockRef.current = null;
@@ -154,10 +153,10 @@ export function useTimeBank() {
         ctx.resume();
       }
 
-      // Play silent audio to keep iOS background alive
-      if (bgAudioRef.current) {
-        bgAudioRef.current.play().catch(e => console.warn('Audio play failed:', e));
-      }
+      // iOSショートカット連携 (提案2)
+      // 「タイマーセット」という名前のショートカットを起動し、秒数を渡す
+      const shortcutUrl = `shortcuts://run-shortcut?name=${encodeURIComponent('タイマーセット')}&input=${bankedTime}`;
+      window.location.href = shortcutUrl;
 
       requestWakeLock();
 
