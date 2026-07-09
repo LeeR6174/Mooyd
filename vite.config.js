@@ -10,11 +10,11 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon-512.png'],
       manifest: {
-        name: 'Time Bank',
-        short_name: 'Time Bank',
-        description: 'Earn time by studying, spend it on entertainment.',
-        theme_color: '#020617',
-        background_color: '#020617',
+        name: 'Mooyd Reminders',
+        short_name: 'Mooyd',
+        description: 'Complete tasks to earn coins and unlock rewards.',
+        theme_color: '#000000',
+        background_color: '#000000',
         display: 'standalone',
         icons: [
           {

@@ -1,102 +1,86 @@
-const STORE_ITEMS = [
-  { id: 'icon_default', type: 'icon', name: 'シルエット', value: '👤', price: 0 },
-  { id: 'icon_cat', type: 'icon', name: '猫', value: '🐱', price: 600 }, // 10 mins
-  { id: 'icon_dog', type: 'icon', name: '犬', value: '🐶', price: 600 },
-  { id: 'icon_owl', type: 'icon', name: 'フクロウ', value: '🦉', price: 1800 }, // 30 mins
-  { id: 'icon_rocket', type: 'icon', name: 'ロケット', value: '🚀', price: 3600 }, // 1 hour
-  { id: 'icon_crown', type: 'icon', name: '王冠', value: '👑', price: 18000 }, // 5 hours
+import { STORE_ITEMS } from '../hooks/useStore';
+import { ShoppingBag, Check } from 'lucide-react';
 
-  { id: 'title_beginner', type: 'title', name: '称号：初心者', value: '初心者', price: 0 },
-  { id: 'title_student', type: 'title', name: '称号：学習者', value: '学習者', price: 1200 },
-  { id: 'title_master', type: 'title', name: '称号：マスター', value: 'マスター', price: 7200 },
-  { id: 'title_legend', type: 'title', name: '称号：レジェンド', value: 'レジェンド', price: 36000 },
+export function StoreTab({ coins, inventory, equipped, onBuy, onEquip }) {
+  const avatars = STORE_ITEMS.filter(item => item.category === 'avatar');
+  const boosts = STORE_ITEMS.filter(item => item.category === 'boost');
+  const themes = STORE_ITEMS.filter(item => item.category === 'theme');
+  const titles = STORE_ITEMS.filter(item => item.category === 'title');
 
-  { id: 'theme_default', type: 'theme', name: 'ダークテーマ（標準）', value: 'default', price: 0 },
-  { id: 'theme_nature', type: 'theme', name: 'ネイチャー（緑）', value: 'nature', price: 3600 },
-  { id: 'theme_ocean', type: 'theme', name: 'オーシャン（青）', value: 'ocean', price: 3600 },
-];
+  const renderItem = (item) => {
+    const isOwned = inventory.includes(item.id);
+    const isEquipped = equipped[item.category] === item.id;
+    const canAfford = coins >= item.price;
 
-export function StoreTab({ coins, profile, buyItem, equipItem }) {
-  
-  const handleItemClick = (item) => {
-    const isUnlocked = profile.unlocked.includes(item.id);
-    const isEquipped = profile[item.type] === item.value;
-
-    if (isEquipped) return; // Already equipped, do nothing
-
-    if (isUnlocked) {
-      // Equip
-      equipItem(item.type, item.value);
-    } else {
-      // Buy
-      if (coins >= item.price) {
-        if (window.confirm(`${item.name} を ${item.price}🪙 で購入しますか？`)) {
-          const success = buyItem(item);
-          if (success) {
-            equipItem(item.type, item.value);
-          }
-        }
-      } else {
-        alert(`コインが足りません！（あと ${item.price - coins}🪙 必要です）`);
-      }
-    }
-  };
-
-  const renderSection = (title, type) => {
-    const items = STORE_ITEMS.filter(i => i.type === type);
     return (
-      <div className="store-section">
-        <h3 className="store-section-title">{title}</h3>
-        <div className="store-grid">
-          {items.map(item => {
-            const isUnlocked = profile.unlocked.includes(item.id);
-            const isEquipped = profile[item.type] === item.value;
-            const canAfford = coins >= item.price;
-
-            let btnText = '';
-            let btnClass = 'store-item glass ';
-            if (isEquipped) {
-              btnText = '装備中';
-              btnClass += 'equipped';
-            } else if (isUnlocked) {
-              btnText = '装備する';
-              btnClass += 'unlocked';
-            } else {
-              btnText = `${item.price} 🪙`;
-              if (!canAfford) btnClass += 'locked';
-            }
-
-            return (
-              <button 
-                key={item.id} 
-                className={btnClass}
-                onClick={() => handleItemClick(item)}
-              >
-                <div className="item-preview">
-                  {type === 'icon' && <span className="preview-icon">{item.value}</span>}
-                  {type === 'title' && <span className="preview-title">{item.value}</span>}
-                  {type === 'theme' && <div className={`preview-color preview-${item.value}`}></div>}
-                </div>
-                <div className="item-name">{item.name}</div>
-                <div className="item-status">{btnText}</div>
-              </button>
-            );
-          })}
+      <div key={item.id} className={`store-item ${isEquipped ? 'equipped' : ''} ${!isOwned && !canAfford ? 'locked' : ''}`}>
+        {item.emoji && <div className="store-item-emoji">{item.emoji}</div>}
+        <div className="store-item-info">
+          <h4>{item.name}</h4>
+          <p className="item-desc">{item.desc}</p>
+          {item.multiplier && <p className="item-boost-desc">倍率: x{item.multiplier}</p>}
+        </div>
+        
+        <div className="store-item-action">
+          {isEquipped ? (
+            <span className="equipped-badge"><Check size={16} /> 装備中</span>
+          ) : isOwned ? (
+            <button className="btn btn-equip" onClick={() => onEquip(item)}>装備する</button>
+          ) : (
+            <button 
+              className="btn btn-buy" 
+              disabled={!canAfford}
+              onClick={() => {
+                if(window.confirm(`${item.name} を ${item.price}コインで購入しますか？`)) {
+                  onBuy(item);
+                }
+              }}
+            >
+              🪙 {item.price}
+            </button>
+          )}
         </div>
       </div>
     );
   };
 
   return (
-    <div className="store-tab animate-slide-down">
+    <div className="store-tab">
       <div className="store-header">
-        <h2 className="tab-title">Store</h2>
-        <p className="store-desc">勉強して貯めたコインでアイテムを解放しよう！</p>
+        <div className="store-coins">
+          <ShoppingBag size={28} className="accent-icon" />
+          <span>所持コイン: <strong>{coins}</strong></span>
+        </div>
+        <p className="store-subtitle">タスクをこなして様々なアイテムをコレクションしよう！</p>
       </div>
 
-      {renderSection('アイコン (Icons)', 'icon')}
-      {renderSection('称号 (Titles)', 'title')}
-      {renderSection('テーマカラー (Themes)', 'theme')}
+      <div className="store-section">
+        <h3 className="section-title">✨ アバター (アイコン)</h3>
+        <div className="store-grid">
+          {avatars.map(renderItem)}
+        </div>
+      </div>
+
+      <div className="store-section">
+        <h3 className="section-title">🔮 お守り (獲得コインUP)</h3>
+        <div className="store-grid">
+          {boosts.map(renderItem)}
+        </div>
+      </div>
+
+      <div className="store-section">
+        <h3 className="section-title">🎨 テーマ (背景色)</h3>
+        <div className="store-grid">
+          {themes.map(renderItem)}
+        </div>
+      </div>
+
+      <div className="store-section">
+        <h3 className="section-title">👑 称号 (ヘッダー表示)</h3>
+        <div className="store-grid">
+          {titles.map(renderItem)}
+        </div>
+      </div>
     </div>
   );
 }
