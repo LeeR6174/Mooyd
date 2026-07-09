@@ -27,13 +27,6 @@ function App() {
           </span>
         </div>
         <div className="header-right">
-          <button 
-            className="debug-coin-btn"
-            onClick={() => addCoins(1000)}
-            style={{ fontSize: '0.8rem', padding: '4px 8px', borderRadius: '12px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}
-          >
-            +1000🪙 (テスト用)
-          </button>
           <div className="coins-badge">
             <span className="coin-icon">🪙</span> 
             <span className="coin-amount">{coins}</span>
