@@ -17,13 +17,29 @@ export function ShortcutHelp({ onClose }) {
 
           <div className="help-section">
             <h3>1. 追加用ショートカット</h3>
-            <p><strong>名前:</strong> <code>AddMooydTask</code> (※大文字小文字を正確に)</p>
-            <ol>
-              <li>ショートカットアプリで新規作成し、名前に上記を設定。</li>
-              <li>アクション「新規リマインダーを追加」を配置。</li>
-              <li>タイトル部分に「ショートカットの入力」を選択。</li>
-              <li>必要に応じてリストを「指定なし」から特定のリスト（例：受信トレイ）に変更。</li>
-            </ol>
+            <p>スワイプの方向に応じて以下の2つのショートカットが必要です。</p>
+            
+            <div className="help-sub-section">
+              <h4>A. 今日 (名前: <code>AddMooydTaskToday</code>)</h4>
+              <ol>
+                <li>アクション「新規リマインダーを追加」を配置。</li>
+                <li>タイトル部分に「ショートカットの入力」を選択。</li>
+                <li>「詳細を表示」から、期限を「現在の日付」に設定。</li>
+              </ol>
+            </div>
+
+            <div className="help-sub-section">
+              <h4>B. 日付指定 (名前: <code>AddMooydTaskDate</code>)</h4>
+              <ol>
+                <li>アクション「新規リマインダーを追加」を配置。</li>
+                <li>タイトル部分に「ショートカットの入力」を選択。</li>
+                <li>「詳細を表示」から、期限を「毎回尋ねる」に設定。</li>
+              </ol>
+            </div>
+            <p className="help-note">
+              ※すべて大文字小文字を正確に入力してください。<br />
+              ※必要に応じてリストを「指定なし」から特定のリスト（例：受信トレイ）に変更してください。
+            </p>
           </div>
 
           <div className="help-section">

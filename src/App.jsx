@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore, STORE_ITEMS } from './hooks/useStore';
 import { useReminders } from './hooks/useReminders';
 import { ReminderList } from './components/ReminderList';
@@ -13,6 +13,16 @@ function App() {
   
   const [activeTab, setActiveTab] = useState('reminders');
   const [showHelp, setShowHelp] = useState(false);
+  const [coinAnimating, setCoinAnimating] = useState(false);
+
+  // Coin animation trigger
+  useEffect(() => {
+    if (coins > 0) {
+      setCoinAnimating(true);
+      const timer = setTimeout(() => setCoinAnimating(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [coins]);
 
   // Get current title and avatar
   const currentTitle = STORE_ITEMS.find(item => item.id === equipped.title)?.name || '名称未設定';
@@ -27,7 +37,7 @@ function App() {
           </span>
         </div>
         <div className="header-right">
-          <div className="coins-badge">
+          <div className={`coins-badge ${coinAnimating ? 'animating' : ''}`}>
             <span className="coin-icon">🪙</span> 
             <span className="coin-amount">{coins}</span>
           </div>

@@ -31,14 +31,20 @@ export function useReminders(addCoins) {
     localStorage.setItem('mooyd_reminders', JSON.stringify(reminders));
   }, [reminders]);
 
-  const addReminder = (title) => {
+  const addReminder = (title, type = 'none') => {
     const newId = Date.now().toString();
     const newReminder = { id: newId, title, completed: false };
     setReminders(prev => [...prev, newReminder]);
     
     // Trigger iOS Shortcut for adding
     const encodedTitle = encodeURIComponent(title);
-    window.location.href = `shortcuts://run-shortcut?name=AddMooydTask&input=${encodedTitle}`;
+    let shortcutName = 'AddMooydTask';
+    if (type === 'today') {
+      shortcutName = 'AddMooydTaskToday';
+    } else if (type === 'date') {
+      shortcutName = 'AddMooydTaskDate';
+    }
+    window.location.href = `shortcuts://run-shortcut?name=${shortcutName}&input=${encodedTitle}`;
   };
 
   const completeReminder = (id, title) => {
