@@ -4,66 +4,46 @@ export function useReminders(addCoins) {
   const [reminders, setReminders] = useState(() => {
     const saved = localStorage.getItem('mooyd_reminders');
     return saved ? JSON.parse(saved) : [
-      { id: '1', title: 'ショートカットの設定をする', completed: false }
+      { id: '1', title: 'やりたいことを1つ登録してみる', completed: false }
     ];
   });
-
-  // Handle incoming rewards from Shortcut via URL
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const reward = params.get('reward');
-    const completedId = params.get('completed');
-
-    if (reward) {
-      addCoins(parseInt(reward, 10));
-      if (completedId) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setReminders(prev => prev.filter(r => r.id !== completedId));
-      }
-      // Remove query params to prevent double reward on refresh
-      window.history.replaceState({}, document.title, window.location.pathname);
-      
-      // Optional: Play a sound or show a toast here for the coin reward
-    }
-  }, [addCoins]);
 
   useEffect(() => {
     localStorage.setItem('mooyd_reminders', JSON.stringify(reminders));
   }, [reminders]);
 
-  const addReminder = (title, type = 'none') => {
-    const newId = Date.now().toString();
-    const newReminder = { id: newId, title, completed: false };
-    setReminders(prev => [...prev, newReminder]);
-    
-    // Trigger iOS Shortcut for adding
-    const encodedTitle = encodeURIComponent(title);
-    let shortcutName = 'AddMooydTask';
-    if (type === 'today') {
-      shortcutName = 'AddMooydTaskToday';
-    } else if (type === 'date') {
-      shortcutName = 'AddMooydTaskDate';
-    }
-    window.location.href = `shortcuts://run-shortcut?name=${shortcutName}&input=${encodedTitle}`;
+  const addReminder = (title) => {
+    if (!title.trim()) return;
+    const newReminder = {
+      id: Date.now().toString(),
+      title: title.trim(),
+      completed: false
+    };
+    setReminders(prev => [newReminder, ...prev]);
   };
 
-  const completeReminder = (id, title) => {
-    // Optimistic UI update
-    setReminders(prev => prev.filter(r => r.id !== id));
-    
-    // Construct the callback URL
-    // In dev, this is http://localhost:5173/
-    const callbackUrl = encodeURIComponent(`${window.location.origin}${window.location.pathname}?reward=10&completed=${id}`);
-    const encodedTitle = encodeURIComponent(title);
-    
-    // x-callback-url allows returning to the app
-    window.location.href = `shortcuts://x-callback-url/run-shortcut?name=CompleteMooydTask&input=${encodedTitle}&x-success=${callbackUrl}`;
+  const toggleComplete = (id) => {
+    setReminders(prev => prev.map(item => {
+      if (item.id === id) {
+        const nextState = !item.completed;
+        if (nextState && typeof addCoins === 'function') {
+          addCoins(10); // Reward coins when checking off a task
+        }
+        return { ...item, completed: nextState };
+      }
+      return item;
+    }));
+  };
+
+  const deleteReminder = (id) => {
+    setReminders(prev => prev.filter(item => item.id !== id));
   };
 
   return {
     reminders,
     addReminder,
-    completeReminder,
+    toggleComplete,
+    deleteReminder,
     setReminders
   };
 }

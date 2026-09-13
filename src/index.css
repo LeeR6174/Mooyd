@@ -321,10 +321,16 @@ body {
   padding: 16px 0;
   border-bottom: 2px dashed var(--border);
   gap: 16px;
+  transition: all 0.2s ease;
 }
 
 .reminder-item:last-child {
   border-bottom: none;
+}
+
+.reminder-item.completed .reminder-title {
+  text-decoration: line-through;
+  opacity: 0.5;
 }
 
 .reminder-checkbox {
@@ -369,28 +375,67 @@ body {
   100% { transform: scale(1); opacity: 1; }
 }
 
-.reminder-item.completing {
-  opacity: 0.5;
-  transform: translateX(10px);
-  transition: all 0.3s ease;
-}
-
 .reminder-title {
   font-size: 1.1rem;
   font-weight: 600;
+  flex: 1;
+  word-break: break-word;
+  transition: all 0.2s ease;
+}
+
+.delete-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.delete-btn:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
 }
 
 /* Reminder Input */
 .reminder-input-wrapper {
-  padding-top: 16px;
-  border-top: 2px solid var(--border);
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 2px solid var(--border);
 }
 
 .reminder-input-form {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 12px;
+  gap: 12px;
+}
+
+.add-todo-btn {
+  background: var(--primary);
+  color: var(--surface);
+  border: none;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: var(--font-family);
+}
+
+.add-todo-btn:hover:not(:disabled) {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+.add-todo-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .plus-icon {

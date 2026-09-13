@@ -9,7 +9,7 @@ import { HelpCircle } from 'lucide-react';
 
 function App() {
   const { coins, inventory, equipped, addCoins, buyItem, equipItem } = useStore();
-  const { reminders, addReminder, completeReminder } = useReminders(addCoins);
+  const { reminders, addReminder, toggleComplete, deleteReminder } = useReminders(addCoins);
   
   const [activeTab, setActiveTab] = useState('reminders');
   const [showHelp, setShowHelp] = useState(false);
@@ -49,7 +49,7 @@ function App() {
 
       <div className="title-section">
         <h1>Mooyd</h1>
-        <p className="subtitle">Apple Reminders PWA</p>
+        <p className="subtitle">やりたいことリスト & コイン獲得</p>
       </div>
 
       <nav className="tabs">
@@ -57,7 +57,7 @@ function App() {
           className={`tab-btn ${activeTab === 'reminders' ? 'active' : ''}`} 
           onClick={() => setActiveTab('reminders')}
         >
-          タスク
+          やりたいこと
         </button>
         <button 
           className={`tab-btn ${activeTab === 'store' ? 'active' : ''}`} 
@@ -70,8 +70,12 @@ function App() {
       <main className="main-content">
         {activeTab === 'reminders' && (
           <div className="reminders-view animate-fade-in">
-            <ReminderList reminders={reminders} onComplete={completeReminder} />
             <ReminderInput onAdd={addReminder} />
+            <ReminderList 
+              reminders={reminders} 
+              onToggleComplete={toggleComplete} 
+              onDelete={deleteReminder}
+            />
           </div>
         )}
         
