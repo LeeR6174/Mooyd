@@ -4,15 +4,12 @@ import { useReminders } from './hooks/useReminders';
 import { ReminderList } from './components/ReminderList';
 import { ReminderInput } from './components/ReminderInput';
 import { StoreTab } from './components/StoreTab';
-import { ShortcutHelp } from './components/ShortcutHelp';
-import { HelpCircle } from 'lucide-react';
 
 function App() {
   const { coins, inventory, equipped, addCoins, buyItem, equipItem } = useStore();
   const { reminders, addReminder, toggleComplete, deleteReminder } = useReminders(addCoins);
   
   const [activeTab, setActiveTab] = useState('reminders');
-  const [showHelp, setShowHelp] = useState(false);
   const [coinAnimating, setCoinAnimating] = useState(false);
 
   // Coin animation trigger
@@ -41,9 +38,6 @@ function App() {
             <span className="coin-icon">🪙</span> 
             <span className="coin-amount">{coins}</span>
           </div>
-          <button className="help-btn" onClick={() => setShowHelp(true)}>
-            <HelpCircle size={20} />
-          </button>
         </div>
       </header>
 
@@ -91,10 +85,6 @@ function App() {
           </div>
         )}
       </main>
-
-      {showHelp && (
-        <ShortcutHelp onClose={() => setShowHelp(false)} />
-      )}
     </div>
   );
 }
